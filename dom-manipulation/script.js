@@ -545,6 +545,162 @@ document.getElementById("newQuote").addEventListener("click", () => {
 
 // Load Categories and Apply Last Filter on Page Load
 populateCategories();
+const API_URL = "https://jsonplaceholder.typicode.com/posts"; // Mock API endpoint
+
+// Load Quotes from Local Storage or Use Default
+let quotes = JSON.parse(localStorage.getItem("quotes")) || [
+    { text: "The only limit to our realization of tomorrow is our doubts of today.", category: "Motivation" },
+    { text: "In the middle of every difficulty lies opportunity.", category: "Inspiration" },
+    { text: "Do what you can, with what you have, where you are.", category: "Success" }
+];
+
+// Function to Save Quotes to Local Storage
+function saveQuotesToLocalStorage() {
+    localStorage.setItem("quotes", JSON.stringify(quotes));
+}
+
+// Function to Populate Categories Dynamically
+function populateCategories() {
+    const categoryFilter = document.getElementById("categoryFilter");
+    categoryFilter.innerHTML = `<option value="all">All Categories</option>`;
+
+    const uniqueCategories = [...new Set(quotes.map(q => q.category.toLowerCase()))];
+
+    uniqueCategories.forEach(category => {
+        const option = document.createElement("option");
+        option.value = category;
+        option.textContent = category.charAt(0).toUpperCase() + category.slice(1);
+        categoryFilter.appendChild(option);
+    });
+
+    const lastFilter = localStorage.getItem("lastCategoryFilter");
+    if (lastFilter) {
+        categoryFilter.value = lastFilter;
+        filterQuotes();
+    }
+}
+
+// Function to Filter Quotes Based on Selected Category
+function filterQuotes() {
+    const selectedCategory = document.getElementById("categoryFilter").value;
+    localStorage.setItem("lastCategoryFilter", selectedCategory);
+
+    if (selectedCategory === "all") {
+        showRandomQuote();
+    } else {
+        showRandomQuote(selectedCategory);
+    }
+}
+
+// Function to Show a Random Quote Based on Category
+function showRandomQuote(category = "") {
+    let filteredQuotes = quotes;
+
+    if (category && category !== "all") {
+        filteredQuotes = quotes.filter(quote => quote.category.toLowerCase() === category.toLowerCase());
+    }
+
+    if (filteredQuotes.length === 0) {
+        alert("No quotes available for this category. Please add one.");
+        return;
+    }
+
+    const randomIndex = Math.floor(Math.random() * filteredQuotes.length);
+    const quoteDisplay = document.getElementById("quoteDisplay");
+    quoteDisplay.textContent = `"${filteredQuotes[randomIndex].text}" - [${filteredQuotes[randomIndex].category}]`;
+}
+
+// Function to Fetch Quotes from Server
+async function fetchQuotesFromServer() {
+    try {
+        const response = await fetch(API_URL);
+        const serverData = await response.json();
+
+        // Simulate fetching new quotes
+        const newQuotes = serverData.slice(0, 5).map(post => ({
+            text: post.title,
+            category: "General"
+        }));
+
+        return newQuotes;
+    } catch (error) {
+        console.error("Failed to fetch quotes:", error);
+        return [];
+    }
+}
+
+// Function to Post a Quote to the Server
+async function postQuoteToServer(quote) {
+    try {
+        await fetch(API_URL, {
+            method: "POST",
+            body: JSON.stringify(quote),
+            headers: { "Content-Type": "application/json" }
+        });
+    } catch (error) {
+        console.error("Failed to post quote:", error);
+    }
+}
+
+// Function to Sync with Server (Fetch & Resolve Conflicts)
+async function syncQuotes() {
+    const syncStatus = document.getElementById("syncStatus");
+    syncStatus.textContent = "Syncing with server...";
+
+    const serverQuotes = await fetchQuotesFromServer();
+    let conflictResolved = false;
+
+    serverQuotes.forEach(serverQuote => {
+        const exists = quotes.some(q => q.text === serverQuote.text);
+        if (!exists) {
+            quotes.push(serverQuote);
+            conflictResolved = true;
+        }
+    });
+
+    saveQuotesToLocalStorage();
+    populateCategories();
+
+    syncStatus.textContent = conflictResolved ? "Sync complete. New quotes added." : "No new quotes found. Everything is up-to-date.";
+}
+
+// Function to Add a New Quote
+function addQuote() {
+    const quoteText = document.getElementById("newQuoteText").value.trim();
+    const quoteCategory = document.getElementById("newQuoteCategory").value.trim();
+
+    if (quoteText === "" || quoteCategory === "") {
+        alert("Please enter both quote text and category.");
+        return;
+    }
+
+    const newQuote = { text: quoteText, category: quoteCategory };
+
+    quotes.push(newQuote);
+    saveQuotesToLocalStorage();
+    populateCategories();
+
+    postQuoteToServer(newQuote);
+
+    document.getElementById("quoteDisplay").textContent = `"${quoteText}" - [${quoteCategory}]`;
+
+    document.getElementById("newQuoteText").value = "";
+    document.getElementById("newQuoteCategory").value = "";
+
+    alert("Quote added successfully!");
+}
+
+// Periodic Syncing Every 30 Seconds
+setInterval(syncQuotes, 30000);
+
+// Event Listener for "Show New Quote" Button
+document.getElementById("newQuote").addEventListener("click", () => {
+    const selectedCategory = document.getElementById("categoryFilter").value;
+    showRandomQuote(selectedCategory);
+});
+
+// Load Categories and Apply Last Filter on Page Load
+populateCategories();
 
 
 
