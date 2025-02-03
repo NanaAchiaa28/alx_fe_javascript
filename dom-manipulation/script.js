@@ -701,6 +701,107 @@ document.getElementById("newQuote").addEventListener("click", () => {
 
 // Load Categories and Apply Last Filter on Page Load
 populateCategories();
+const API_URL = "https://jsonplaceholder.typicode.com/posts"; // Mock API
+
+// Load Quotes from Local Storage or Use Default
+let quotes = JSON.parse(localStorage.getItem("quotes")) || [
+    { text: "The only limit to our realization of tomorrow is our doubts of today.", category: "Motivation" },
+    { text: "In the middle of every difficulty lies opportunity.", category: "Inspiration" },
+    { text: "Do what you can, with what you have, where you are.", category: "Success" }
+];
+
+// Function to Save Quotes to Local Storage
+function saveQuotesToLocalStorage() {
+    localStorage.setItem("quotes", JSON.stringify(quotes));
+}
+
+// Function to Display Sync Notifications
+function updateSyncStatus(message) {
+    document.getElementById("syncStatus").textContent = message;
+}
+
+// Function to Fetch Quotes from Server
+async function fetchQuotesFromServer() {
+    try {
+        const response = await fetch(API_URL);
+        const serverData = await response.json();
+
+        // Simulate fetching new quotes
+        return serverData.slice(0, 5).map(post => ({
+            text: post.title,
+            category: "General"
+        }));
+    } catch (error) {
+        updateSyncStatus("Error fetching quotes from server.");
+        return [];
+    }
+}
+
+// Function to Post a Quote to the Server
+async function postQuoteToServer(quote) {
+    try {
+        await fetch(API_URL, {
+            method: "POST",
+            body: JSON.stringify(quote),
+            headers: { "Content-Type": "application/json" }
+        });
+        updateSyncStatus("Quote added and synced with server!");
+    } catch (error) {
+        updateSyncStatus("Failed to sync new quote with server.");
+    }
+}
+
+// Function to Sync with Server (Fetch & Resolve Conflicts)
+async function syncQuotes() {
+    updateSyncStatus("Syncing with server...");
+
+    const serverQuotes = await fetchQuotesFromServer();
+    let conflictResolved = false;
+
+    serverQuotes.forEach(serverQuote => {
+        if (!quotes.some(q => q.text === serverQuote.text)) {
+            quotes.push(serverQuote);
+            conflictResolved = true;
+        }
+    });
+
+    saveQuotesToLocalStorage();
+
+    if (conflictResolved) {
+        updateSyncStatus("Quotes synced with server!");
+    } else {
+        updateSyncStatus("No new quotes found. Everything is up-to-date.");
+    }
+}
+
+// Function to Add a New Quote
+function addQuote() {
+    const quoteText = document.getElementById("newQuoteText").value.trim();
+    const quoteCategory = document.getElementById("newQuoteCategory").value.trim();
+
+    if (quoteText === "" || quoteCategory === "") {
+        alert("Please enter both quote text and category.");
+        return;
+    }
+
+    const newQuote = { text: quoteText, category: quoteCategory };
+
+    quotes.push(newQuote);
+    saveQuotesToLocalStorage();
+
+    postQuoteToServer(newQuote);
+
+    document.getElementById("quoteDisplay").textContent = `"${quoteText}" - [${quoteCategory}]`;
+
+    document.getElementById("newQuoteText").value = "";
+    document.getElementById("newQuoteCategory").value = "";
+
+    alert("Quote added successfully!");
+}
+
+// Periodic Syncing Every 30 Seconds
+setInterval(syncQuotes, 30000
+
 
 
 
